@@ -181,8 +181,8 @@ const logOutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: {
-        refreshToken: undefined,
+      $unset: {
+        refreshToken: 1,
       },
     },
     {
@@ -206,7 +206,7 @@ const logOutUser = asyncHandler(async (req, res) => {
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRefreshToken =
-    req.cookies?.refreshToken || req.body?.refreshToken;
+  req.cookies?.refreshToken || req.body?.refreshToken;
 
   if (!incomingRefreshToken) {
     throw new ApiError(401, "Unauthorized request");
@@ -233,7 +233,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       secure: true,
     };
 
-    await generateAccessAndRefreshToken(user._id);
+    const {accessToken, refreshToken:newRefreshToken} = await generateAccessAndRefreshToken(user._id);
 
     return res
       .status(200)
@@ -243,8 +243,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         new ApiResponse(
           200,
           {
-            accessToken,
-            refreshToken: newRefreshToken,
+            newRefreshToken,
+            accessToken
           },
           "Access token refreshed"
         )
@@ -279,11 +279,14 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 const updateAccountDetails = asyncHandler(async (req, res) => {
   const { fullName, email } = req.body;
 
-  if (!(fullName || email)) {
+  console.log("fullName",fullName);
+  
+
+  if (!fullName || !email) {
     throw new ApiError(400, "All fields are required");
   }
 
-  const user = User.findByIdAndUpdate(
+  const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set: {
@@ -308,7 +311,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Avatar file is missing");
   }
 
-  const avatar = await uploadOnCloudinary(avatarLocalPath);
+  const avatar = await uploadOnCloudinary(localAvatarPath);
 
   if (!avatar.url) {
     throw new ApiError(400, "Error while uploading avatar");
@@ -361,7 +364,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user, "Update cover image successfully"));
 });
 
-const getUserProfile = asyncHandler(async (req, res) => {
+const getUserBlogProfile = asyncHandler(async (req, res) => {
   const { username } = req.params;
 
   if (!username?.trim()) {
@@ -393,10 +396,10 @@ const getUserProfile = asyncHandler(async (req, res) => {
     {
       $addFields: {
         subscribersCount: {
-          $size: "subscribers",
+          $size: "$subscribers",
         },
         channelsSubscribedToCount: {
-          $size: "subscribedTo",
+          $size: "$subscribedTo",
         },
         isSubscribed: {
           $cond: {
@@ -436,70 +439,59 @@ const getUserProfile = asyncHandler(async (req, res) => {
     );
 });
 
-const getPostViews = asyncHandler(async (req, res) =>{
-
-})
-
-const getPostLikes = asyncHandler(async (req, res) =>{
-
-})
-
-const getPostComments = asyncHandler(async (req, res) =>{
-
-})
-
-const getReadHistory = asyncHandler(async (req, res) =>{
-  const user = await User.aggregate({
-    $match:{
-      _id: new mongoose.Types.ObjectId(req.user._id)
-    }
-  },
-  {
-    $lookup: {
-      from: "post",
-      localField: "readHistory",
-      foreignField: "_id",
-      as: "readHistory",
-      pipeline:[
-        {
-          $lookup:
+const getReadHistory = asyncHandler(async (req, res) => {
+  const user = await User.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(req.user._id),
+      },
+    },
+    {
+      $lookup: {
+        from: "post",
+        localField: "readHistory",
+        foreignField: "_id",
+        as: "readHistory",
+        pipeline: [
           {
-            from:"user",
-            localField: "authorId",
-            foreignField: "_id",
-            as: "author",
-            pipeline: [
-              {
-                $project: {
-                  fullName: 1,
-                  username: 1,
-                  avatar: 1
-                }
+            $lookup: {
+              from: "user",
+              localField: "authorId",
+              foreignField: "_id",
+              as: "author",
+              pipeline: [
+                {
+                  $project: {
+                    fullName: 1,
+                    username: 1,
+                    avatar: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              author: {
+                $first: "$author",
               },
-            ]
-          }
-        },
-        {
-          $addFields: {
-            author: {
-              $first:  "$author"
-            }
-          }
-        }
-      ]
+            },
+          },
+        ],
+      },
     }
+  ]);
 
-  }
-
-)
-
-return res.status(200).json(
-  new ApiResponse(200,
-    user[0].readHistory,
-    "Read history fetched successfully"
-  )
-)
-})
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        user[0].readHistory,
+        "Read history fetched successfully"
+      )
+    );
+});
 
 export {
   registerUser,
@@ -511,9 +503,6 @@ export {
   updateAccountDetails,
   updateUserAvatar,
   updateUserCoverImage,
-  getPostComments,
-  getPostLikes,
-  getPostViews,
   getReadHistory,
-  getUserProfile
+  getUserBlogProfile,
 };

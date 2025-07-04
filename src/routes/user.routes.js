@@ -9,7 +9,7 @@ import {
   updateAccountDetails,
   updateUserAvatar,
   updateUserCoverImage,
-  getUserProfile,
+  getUserBlogProfile,
   getReadHistory,
 } from "../controllers/user.controllers.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -45,9 +45,9 @@ router
   .patch(verifyJWT, upload.single("avatar"), updateUserAvatar);
 router
   .route("/update-cover-image")
-  .patch(verifyJWT, upload.single("/coverImage"), updateUserCoverImage);
+  .patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage);
 
-router.route("/b/:username").get(verifyJWT, getUserProfile);
+router.route("/b/:username").get(verifyJWT, getUserBlogProfile);
 router.route("/history").get(verifyJWT, getReadHistory);
 
 export default router;
