@@ -448,14 +448,14 @@ const getReadHistory = asyncHandler(async (req, res) => {
     },
     {
       $lookup: {
-        from: "post",
+        from: "posts",
         localField: "readHistory",
         foreignField: "_id",
         as: "readHistory",
         pipeline: [
           {
             $lookup: {
-              from: "user",
+              from: "users",
               localField: "authorId",
               foreignField: "_id",
               as: "author",
