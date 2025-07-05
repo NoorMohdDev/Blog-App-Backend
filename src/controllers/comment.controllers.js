@@ -4,6 +4,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { Post } from "../models/post.model.js";
+import { User } from "../models/user.model.js";
 
 const getPostComments = asyncHandler(async (req, res) => {
   //TODO: get all comments for a post
@@ -17,12 +18,34 @@ const getPostComments = asyncHandler(async (req, res) => {
       },
     },
     {
-      $lookup: {
-        from: "user",
+      $lookup:{
+        from: "users",
         localField: "userId",
         foreignField: "_id",
         as: "commentBy",
+        pipeline: [
+          {
+            $project: {
+              fullName: 1,
+              username: 1,
+              avatar: 1,
+            },
+          },
+        ],
+      }
+    },
+    {
+      $addFields: {
+        commentBy: {
+          $first: "$commentBy",
+        },
       },
+    },
+    {
+      $project:{
+        comment: 1,
+        commentBy : 1
+      }
     },
   ]);
 
@@ -32,13 +55,7 @@ const getPostComments = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        comments,
-        "Comments fetched successfully"
-      )
-    );
+    .json(new ApiResponse(200, comments, "Comments fetched successfully"));
 });
 
 const addComment = asyncHandler(async (req, res) => {
