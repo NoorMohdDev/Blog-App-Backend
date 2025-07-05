@@ -8,46 +8,20 @@ import { Post } from "../models/post.model.js";
 const getPostComments = asyncHandler(async (req, res) => {
   //TODO: get all comments for a post
   const { postId } = req.params;
-  const { page = 1, limit = 10 } = req.query;
+  // const { page = 1, limit = 10 } = req.query;
 
-  const comments = await Post.aggregate([
+  const comments = await Comment.aggregate([
     {
       $match: {
-        _id: postId,
+        postId: new mongoose.Types.ObjectId(postId),
       },
     },
     {
       $lookup: {
-        from: "comment",
-        localField: "comments",
+        from: "user",
+        localField: "userId",
         foreignField: "_id",
-        as: "commentsOnPost",
-        pipeline: [
-          {
-            $lookup: {
-              from: "user",
-              localField: "userId",
-              foreignField: "_id",
-              as: "commentBy",
-              pipeline: [
-                {
-                  $project: {
-                    avatar: 1,
-                    username: 1,
-                    fullname: 1,
-                  },
-                },
-              ],
-            },
-          },
-          {
-            $addFields: {
-              comments: {
-                $first: "$commentsOnPost",
-              },
-            },
-          },
-        ],
+        as: "commentBy",
       },
     },
   ]);
@@ -61,7 +35,7 @@ const getPostComments = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        comments[0].comments,
+        comments,
         "Comments fetched successfully"
       )
     );

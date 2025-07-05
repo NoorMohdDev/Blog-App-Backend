@@ -9,23 +9,14 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 const getAllPosts = asyncHandler(async (req, res) => {
   //   const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
   //TODO: get all post based on query, sort, pagination
-  const { userId } = req.user._id;
+  const { userId } = req.query;
 
   const getPosts = await Post.aggregate([
     {
       $match: {
-        _id: new mongoose.Types.ObjectId(req.user._id),
+        authorId: new mongoose.Types.ObjectId(userId),
       },
     },
-    {
-        $lookup:{
-            from: "user",
-            localField: "_id",
-            foreignField:"authorId",
-            as: "posts",
-            
-        }
-    }
   ]);
 
   if (!getPosts) {
@@ -39,8 +30,7 @@ const getAllPosts = asyncHandler(async (req, res) => {
 });
 
 const publishAPost = asyncHandler(async (req, res) => {
-  const { title, description, body, slug, metaDescription, status } = req.body;
-  const { authorId } = req.user?._id;
+  const { title, description, body, slug, metaDescription, status, authorId } = req.body;
   const featureImageLocalFilePath  = req?.file.path;
   // TODO: get post, create post
 
