@@ -24,7 +24,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
       subscriber: req.user._id,
       blog: blogId,
     });
-    return res.status(200).json(new ApiResponse("Unsubscribed successfully"));
+    return res.status(200).json(new ApiResponse(200, {},"Unsubscribed successfully"));
   } else {
     // Subscribe
     const subscription = new Subscription({
