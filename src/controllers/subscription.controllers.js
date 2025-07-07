@@ -34,7 +34,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
     await subscription.save();
     return res
       .status(201)
-      .json(new ApiResponse(200, subscription._id, "Subscribed successfully"));
+      .json(new ApiResponse(200, subscription, "Subscribed successfully"));
   }
 });
 
@@ -68,6 +68,7 @@ const getUserBlogSubscribers = asyncHandler(async (req, res) => {
               pipeline:[
                 {
                     $project:{
+                        _id:0,
                         fullName:1,
                         avatar:1,
                         username:1
@@ -98,6 +99,46 @@ const getUserBlogSubscribers = asyncHandler(async (req, res) => {
 // controller to return Blog list to which user has subscribed
 const getSubscribedBlogs = asyncHandler(async (req, res) => {
   const { subscriberId } = req.params;
+
+  if (!isValidObjectId(subscriberId)) {
+    throw new ApiError(400, "Invalid subscriber ID");
+  }
+
+  const subscribedBlogs = await Subscription.aggregate([
+    {
+      $match: {
+        subscriber: new mongoose.Types.ObjectId(subscriberId),
+      },
+    },
+    {
+        $lookup: {
+            from: "users",
+            localField: "blog",
+            foreignField: "_id",
+            as: "blogDetails",
+            pipeline: [
+            {
+                $project: {
+                _id: 0,
+                fullName: 1,
+                avatar: 1,
+                username: 1,
+                },
+            },
+            ],
+        },
+        },
+        {
+        $unwind: "$blogDetails",
+        },
+        {
+        $replaceRoot: { newRoot: "$blogDetails" },
+    }
+  ])
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, subscribedBlogs, "Subscribed blogs fetched successfully"));
 });
 
 export { toggleSubscription, getSubscribedBlogs, getUserBlogSubscribers };
