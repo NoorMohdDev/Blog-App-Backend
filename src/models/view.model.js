@@ -9,6 +9,10 @@ const viewSchema = new Schema({
     postId: {
         type: Schema.Types.ObjectId,
         ref: "Post"
+    },
+    viewCount: {
+        type: Number,
+        default: 0
     }
 
     
